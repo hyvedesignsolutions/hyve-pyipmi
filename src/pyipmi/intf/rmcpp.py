@@ -4,7 +4,7 @@ from . _rmcpp_msg import IPMI20_Message
 from . _crypto import RAKP_NONE, MD5_128, get_cipher_tuple, \
                         cal_auth_code, conv_str2bytes
 from . _rakp import *
-from .. mesg.ipmi_app import GetChnlAuthCap, SetSessPriv, CloseSess
+from .. mesg.ipmi_app import IPMI_SendMsg, GetChnlAuthCap, SetSessPriv, CloseSess
 from .. util.exception import PyIntfExcept, PyIntfSeqExcept
 
 class RMCPP(RMCP):
@@ -92,7 +92,7 @@ class RMCPP(RMCP):
             th.daemon = True
             th.start()
 
-    def gen_msg(self, cmd):
+    def gen_msg(self, cmd, bridging=False, dest=0, target=0):
         msg = IPMI20_Message(self.cipher, self.sseq, self.sid, self.passwd, 
                              self.k1, self.k2)
                              
@@ -100,11 +100,19 @@ class RMCPP(RMCP):
             # RMCP Open Session Request & RAKP 1, 3
             payload = cmd.pack()
             data = msg.pack(cmd, payload)
+            ret = (msg, data)
+        elif bridging:
+            # Message bridging
+            inner = msg._pack_lan_payload(cmd, target)
+            sm = IPMI_SendMsg(dest, inner)
+            data = msg.pack(sm)
+            ret = (msg, data, sm)
         else:
             # Common IPMI commands
             data = msg.pack(cmd)
+            ret = (msg, data)
 
-        return (msg, data)
+        return ret
 
     def unpack(self, rsp, msg, cmd):
         if cmd.payload_type != 0:

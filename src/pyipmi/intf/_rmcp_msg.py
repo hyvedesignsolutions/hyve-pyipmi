@@ -56,13 +56,14 @@ class IPMI15_Message(RMCP_Message):
         self.sseq = sseq
         self.sid = sid
         self.pwd = pwd
+        self.rs_addr = RMCP_Message.BMC_ADDR
         
         # Generate the RMCP header
         super(IPMI15_Message, self).__init__(msg_cls=7)
 
-    def _pack_lan_payload(self, req):
+    def _pack_lan_payload(self, req, rs_addr=RMCP_Message.BMC_ADDR):
         # rsAddr (SA or SW ID) | NetFn (even) / rsLUN | checksum
-        p1 = struct.pack('<BB', RMCP_Message.BMC_ADDR, (req.netfn << 2) + req.lun)                     
+        p1 = struct.pack('<BB', rs_addr, (req.netfn << 2) + req.lun)                     
         p1 += checksum(p1)
 
         # rqAddr (SA or SW ID)  | rqSeq / rqLUN | cmd | req data (0..N) | checksum
@@ -114,8 +115,14 @@ class IPMI15_Message(RMCP_Message):
         rq_seq >>= 2
         rsp_data = payload[7:len(payload)-1]
 
-        if rq_addr != RMCP_Message.SOFT_ID or rs_addr != RMCP_Message.BMC_ADDR:
-            raise PyIntfExcept('Invalid RMCP data fields in response.')  
+        if rq_addr != RMCP_Message.SOFT_ID:
+            raise PyIntfExcept('Invalid rq_addr: {0:02X}h in response.  Expected {1:02X}h.'.format(
+                               rq_addr, RMCP_Message.SOFT_ID)) 
+
+        if rs_addr != self.rs_addr:
+            raise PyIntfExcept('Invalid rs_addr: {0:02X}h in response.  Expected {1:02X}h.'.format(
+                               rs_addr, self.rs_addr)) 
+
         if rq_seq != self.seq_num:
             raise PyIntfSeqExcept('RMCP sequence number mismatches in response.')  
 

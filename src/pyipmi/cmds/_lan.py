@@ -258,13 +258,13 @@ def _lan_alert(self, argv):
         self.print('Number of Retries      : {0}'.format(rsp[3] & 7))
 
         if rsp2[1] & 0x10:   # IPv6
-            _print_ipv6_addr('Alert IPv6 Address     :', rsp2[2:])
+            _print_ipv6_addr(self, 'Alert IPv6 Address     :', rsp2[2:])
         else:
             gateway = 'default' if rsp2[2] & 1 == 0 else 'backup'
 
             self.print('Alert Gateway          : {0}'.format(gateway))
-            _print_ip_addr('Alert IP Address       :', rsp2[3:7])
-            _print_mac_addr('Alert MAC Address      :', rsp2[7:])
+            _print_ip_addr(self, 'Alert IP Address       :', rsp2[3:7])
+            _print_mac_addr(self, 'Alert MAC Address      :', rsp2[7:])
             
         self.print('')
 

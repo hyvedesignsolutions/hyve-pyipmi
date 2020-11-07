@@ -167,6 +167,14 @@ Supported types are none, md2, md5 (default), password, and oem.''')
         self.parser.add_option('-f', '--force', action='store_true', dest='force',
                   help='Force to overwrite the config file with the options given from the command line.')
 
+    def add_more_options(self):
+        self.parser.add_option('-l', '--lun', dest='lun', 
+                  help='Set destination lun for raw commands.')
+        self.parser.add_option('-b', '--dest_chnl', dest='dest_chnl', 
+                  help='Set destination channel for bridged request.')
+        self.parser.add_option('-t', '--target_addr', dest='target_addr', 
+                  help='Bridge IPMI requests to the remote target address.')
+
     def parse_options(self, opt_str):
         args = opt_str.split(' ')
         args = [x.strip() for x in args]

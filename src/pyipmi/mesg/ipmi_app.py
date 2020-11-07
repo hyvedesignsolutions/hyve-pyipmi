@@ -90,6 +90,15 @@ class GetEnables(IPMI_Message):
     def unpack(self, rsp):
         return super(GetEnables, self).unpack(rsp, 'B')
 
+class IPMI_SendMsg(IPMI_Message):
+    def __init__(self, dest, inner):
+        super(IPMI_SendMsg, self).__init__(NETFN_APP, 0x34)
+        self.req_data = struct.pack('B', 0x40 | dest) + inner
+
+    def unpack(self, rsp):
+        # rsp = (netfn, cmd, cc, rsp_data)
+        return super(IPMI_SendMsg, self).unpack(rsp)
+
 class GetChnlAuthCap(IPMI_Message):
     def __init__(self, priv, chnl=0x0e):
         super(GetChnlAuthCap, self).__init__(NETFN_APP, 0x38)

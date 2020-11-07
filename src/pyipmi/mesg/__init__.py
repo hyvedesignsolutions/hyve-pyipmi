@@ -32,11 +32,11 @@ class IPMI_Message:
     def unpack(self, rsp, fmt=None):
         # rsp = (netfn, cmd, cc, rsp_data)
         if rsp[0] != self.netfn + 1:
-            raise PyMesgExcept('Invalid NetFn {0:02x} in the response.'
+            raise PyMesgExcept('Invalid NetFn {0:02x}h in the response.'
                                .format(rsp[0]))
 
         if rsp[1] != self.cmd:
-            raise PyMesgExcept('Invalid CMD {0:02x} in the response.'
+            raise PyMesgExcept('Invalid CMD {0:02x}h in the response.'
                                .format(rsp[1]))
 
         cc, rsp_data = rsp[2:] 

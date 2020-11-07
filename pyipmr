@@ -9,9 +9,18 @@ if not mylib in sys.path:
 from pyipmi.util import PyTest
 from pyipmi.util.config import PyOpts
 
+def str2int(s):
+    if s[:2] == '0x' or s[:2] == '0X':
+        ret = int(s, base=16)
+    else:
+        ret = int(s)
+
+    return ret
+
 if __name__ == '__main__':
     pyopts = PyOpts()
     pyopts.add_options()
+    pyopts.add_more_options()
     options, args = pyopts.parser.parse_args()
 
     if len(args) < 2:
@@ -21,18 +30,27 @@ if __name__ == '__main__':
     req = []        
     for i in args:  # Drop the program name
         try:
-            if i[:2] == '0x' or i[:2] == '0X':
-                req.append(int(i, base=16))
-            else:
-                req.append(int(i))
+            req.append(str2int(i))
         except:
             print('Invalid input argument: {0}.'.format(i))
             sys.exit(1)
 
     try:
         test = PyTest(options)
-        rsp = test.intf.issue_raw_cmd(req)  # issue the IPMI command
-        test.print_rsp(rsp)                 # print response
+        lun = str2int(options.lun) if options.lun else 0
+        dest = str2int(options.dest_chnl) if options.dest_chnl else None
+        target = str2int(options.target_addr) if options.target_addr else None
+
+        if dest and target:
+            # issue bridging command
+            rsp = test.intf.issue_bridging_cmd(dest, target, req, lun)
+        else:
+            # issue the IPMI command
+            rsp = test.intf.issue_raw_cmd(req, lun)  
+        
+        # print response
+        test.print_rsp(rsp)                      
+
     except BaseException as e:
         print(e)
         sys.exit(1)

@@ -7,7 +7,7 @@ from . _rmcp_msg import ASF_Ping, IPMI15_Message
 from . _crypto import RMCP_AUTHS, AUTH_NONE, conv_str2bytes
 
 from .. mesg import IPMI_Raw
-from .. mesg.ipmi_app import GetChnlAuthCap,\
+from .. mesg.ipmi_app import IPMI_SendMsg, GetChnlAuthCap,\
         GetSessChallenge, ActivateSess, SetSessPriv, CloseSess
 
 class RMCP_Ping(Intf):
@@ -30,8 +30,7 @@ class RMCP_Ping(Intf):
     def close(self):
         pass
 
-    def sendrecv(self, data):
-        retries = 3
+    def sendrecv(self, data, retries=3):
         while retries:
             self.socket.send(data)
             r, _, x = select.select([self.socket], [], [], 1.5)
@@ -126,17 +125,28 @@ class RMCP(RMCP_Ping):
         if r:   return self.socket.recv(4096)
         return None
 
-    def gen_msg(self, cmd):
+    def gen_msg(self, cmd, bridging=False, dest=0, target=0):
         msg = IPMI15_Message(self.auth, self.sseq, self.sid, self.passwd)
-        data = msg.pack(cmd)
-        return (msg, data)
+
+        if bridging:
+            # Message bridging
+            inner = msg._pack_lan_payload(cmd, target)
+            sm = IPMI_SendMsg(dest, inner)
+            data = msg.pack(sm)
+            ret = (msg, data, sm)
+        else:
+            # Common IPMI commands
+            data = msg.pack(cmd)
+            ret = (msg, data)
+
+        return ret
 
     def unpack(self, rsp, msg, cmd):
         pkt1 = msg.unpack(rsp)  
         pkt2 = cmd.unpack(pkt1)
         return pkt2
 
-    def issue_cmd_imp(self, cmd_cls, *args):
+    def _issue_cmd_imp(self, cmd_cls, *args):
         if self.keep_alive: self.wd_count = RMCP.KEEP_ALIVE_PERIOD
         cmd = cmd_cls(*args)
 
@@ -168,16 +178,47 @@ class RMCP(RMCP_Ping):
 
         raise PyIntfExcept('Could not match the request with the response message.')        
 
+    def _issue_bridging_cmd_imp(self, dest, target, req, lun):
+        if self.keep_alive: self.wd_count = RMCP.KEEP_ALIVE_PERIOD
+        cmd = IPMI_Raw(req, lun)
+
+        if self.sess_act:
+            self.sseq += 1
+            if self.sseq > 0xffffffff:
+                self.sseq = 1
+
+        msg, data, cmd_sm = self.gen_msg(cmd, True, dest, target)
+        rsp = self.sendrecv(data, 1)
+
+        # The 1st response of send message received
+        self.unpack(rsp, msg, cmd_sm)   
+
+        retries = 3
+        while retries:
+            rsp = self.recv() 
+            if rsp:  break
+            retries -= 1
+        
+        if not rsp:         
+            raise PyIntfExcept('Message Bridging times out.')        
+
+        # The 2nd response of the inner bridged message received
+        msg.rs_addr = target
+        return self.unpack(rsp, msg, cmd)
+
     def issue_cmd(self, cmd_cls, *args):
         with self.lock:
-            rsp = self.issue_cmd_imp(cmd_cls, *args)
+            rsp = self._issue_cmd_imp(cmd_cls, *args)
         return rsp
 
     def issue_raw_cmd(self, req, lun=0):
+        return self.issue_cmd(IPMI_Raw, req, lun)
+    
+    def issue_bridging_cmd(self, dest, target, req, lun=0):
         with self.lock:
-            rsp = self.issue_cmd_imp(IPMI_Raw, req, lun)
+            rsp = self._issue_bridging_cmd_imp(dest, target, req, lun)        
         return rsp
-
+    
     def keep_alive_cb(self):
         while True:
             if self.wd_count == 0 and self.sess_act:
