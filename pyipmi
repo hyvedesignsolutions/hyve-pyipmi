@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+import sys
+from os.path import dirname, join
+
+mylib = join(dirname(__file__), './src')
+if not mylib in sys.path:
+    sys.path.insert(0, mylib)
+
+from pyipmi.cmds import PyCmds
+from pyipmi.util.config import PyOpts
+            
+if __name__ == '__main__':
+    pyopts = PyOpts()
+    pyopts.add_options()
+    options, args = pyopts.parser.parse_args()
+
+    if len(args) < 1 or args[0] == 'help':
+        PyCmds.print_usage(sys.argv[0])
+        sys.exit(0)
+
+    cmd = PyCmds(options)
+    cmd.exec_command(args)

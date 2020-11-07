@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+import sys
+from os.path import dirname, join
+
+mylib = join(dirname(__file__), './src')
+if not mylib in sys.path:
+    sys.path.insert(0, mylib)
+
+from pyipmi.util import PyTest
+from pyipmi.util.config import PyOpts
+
+if __name__ == '__main__':
+    pyopts = PyOpts()
+    pyopts.add_options()
+    options, args = pyopts.parser.parse_args()
+
+    if len(args) < 2:
+        print('Missing NetFn or CMD.  Stopped.')
+        sys.exit(1)
+
+    req = []        
+    for i in args:  # Drop the program name
+        try:
+            if i[:2] == '0x' or i[:2] == '0X':
+                req.append(int(i, base=16))
+            else:
+                req.append(int(i))
+        except:
+            print('Invalid input argument: {0}.'.format(i))
+            sys.exit(1)
+
+    try:
+        test = PyTest(options)
+        rsp = test.intf.issue_raw_cmd(req)  # issue the IPMI command
+        test.print_rsp(rsp)                 # print response
+    except BaseException as e:
+        print(e)
+        sys.exit(1)
+        

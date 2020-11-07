@@ -17,7 +17,6 @@ setuptools.setup(
     url='https://github.com/hyvedesignsolutions/hyve-pyipmi',
     license='BSD 3-Clause License',
     platforms=['linux', 'windows'],
-    packages=setuptools.find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: BSD License',
@@ -25,5 +24,25 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=requirements,
+    packages=[
+        'pyipmi',
+        'pyipmi.cmds',
+        'pyipmi.intf',
+        'pyipmi.mesg',
+        'pyipmi.util',
+    ],
+    package_dir={
+        'pyipmi': 'src/pyipmi',
+        'pyipmi.cmds': 'src/pyipmi/cmds',
+        'pyipmi.intf': 'src/pyipmi/intf',
+        'pyipmi.mesg': 'src/pyipmi/mesg',
+        'pyipmi.util': 'src/pyipmi/util',
+    },
+    scripts=[
+        'pyipmi',
+        'pyipmr',
+        'pyping',
+        'pysh',
+    ],
 )
 
