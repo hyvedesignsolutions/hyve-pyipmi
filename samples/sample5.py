@@ -31,12 +31,13 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
-import sys
-from os.path import dirname, join
 
-mylib = join(dirname(__file__), '../src')
-if not mylib in sys.path:
-    sys.path.insert(0, mylib)
+# Unmark the following five lines if you didn't run the setup
+#import sys
+#from os.path import dirname, join
+#mylib = join(dirname(__file__), '../src')
+#if not mylib in sys.path:
+#    sys.path.insert(0, mylib)
 
 from pyipmi.cmds import PyCmds
 from pyipmi.util.config import PyOpts

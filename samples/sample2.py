@@ -32,11 +32,12 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 import sys
-from os.path import dirname, join
 
-mylib = join(dirname(__file__), '../src')
-if not mylib in sys.path:
-    sys.path.insert(0, mylib)
+# Unmark the following four lines if you didn't run the setup
+#from os.path import dirname, join
+#mylib = join(dirname(__file__), '../src')
+#if not mylib in sys.path:
+#    sys.path.insert(0, mylib)
 
 from pyipmi.util import PyTest
 from pyipmi.util.config import PyOpts
