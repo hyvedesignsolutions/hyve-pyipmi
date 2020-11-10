@@ -119,11 +119,7 @@ from pyipmi.util.config import PyOpts
 # Same as sample1, with simple checks on the response data
 # and overwrite some values of the user config
 class Sample2(PyTest):
-    def __init__(self):
-        pyopts = PyOpts()
-        pyopts.add_options()
-        opts = pyopts.parse_options('-U hyve -P hyve123')
-
+    def __init__(self, opts):
         super(Sample2, self).__init__(opts)
 
     def run_commands(self, argv=None):
@@ -152,7 +148,11 @@ class Sample2(PyTest):
                 .format(count_p + count_f, count_p, count_f))
 
 if __name__ == '__main__':
-    test = Sample2()
+    pyopts = PyOpts()
+    pyopts.add_options()
+    opts = pyopts.parse_options('-U hyve -P hyve123')
+
+    test = Sample2(opts)
     sys.exit(test.run())
 ```
 
@@ -167,12 +167,9 @@ from pyipmi.util.config import PyOpts
 # Support the following configuration
 # [PyIPMI] <-- LAN (RMCP/RMCP+) --> [BMC] <-- IPMB --> [ME]
 class Sample3(PyTest):
-    def __init__(self):
-        pyopts = PyOpts()
-        pyopts.add_options()
-        opts = pyopts.parse_options('-H 10.19.84.90 -I lanplus -U admin -P admin')
-        self.chnl = 6
-        self.target = 0x2c
+    def __init__(self, opts, chnl, target):
+        self.chnl = chnl
+        self.target = target
 
         super(Sample3, self).__init__(opts)
 
@@ -226,7 +223,11 @@ class Sample3(PyTest):
             self.print_rsp(rsp)
 
 if __name__ == '__main__':
-    test = Sample3()
+    pyopts = PyOpts()
+    pyopts.add_options()
+    opts = pyopts.parse_options('-H 10.19.84.90 -I lanplus -U admin -P admin')
+
+    test = Sample3(opts, 6, 0x2c)
     sys.exit(test.run())
 ```
 

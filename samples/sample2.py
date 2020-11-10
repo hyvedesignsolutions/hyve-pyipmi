@@ -45,11 +45,7 @@ from pyipmi.util.config import PyOpts
 # Same as sample1, with simple checks on the response data
 # and overwrite some values of the user config
 class Sample2(PyTest):
-    def __init__(self):
-        pyopts = PyOpts()
-        pyopts.add_options()
-        opts = pyopts.parse_options('-U hyve -P hyve123')
-
+    def __init__(self, opts):
         super(Sample2, self).__init__(opts)
 
     def run_commands(self, argv=None):
@@ -78,6 +74,10 @@ class Sample2(PyTest):
                 .format(count_p + count_f, count_p, count_f))
 
 if __name__ == '__main__':
-    test = Sample2()
+    pyopts = PyOpts()
+    pyopts.add_options()
+    opts = pyopts.parse_options('-U hyve -P hyve123')
+
+    test = Sample2(opts)
     sys.exit(test.run())
 
