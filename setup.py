@@ -39,7 +39,7 @@ with open('requirements.txt', 'r') as fh:
 
 setuptools.setup(
     name='hyve-pyipmi',
-    version='1.0.0',
+    version='1.0.1',
     keywords=['ipmi', 'rmcp', 'rmcpp'],
     author='Janny Au',
     author_email='jannya@hyvedesignsolutions.com',
