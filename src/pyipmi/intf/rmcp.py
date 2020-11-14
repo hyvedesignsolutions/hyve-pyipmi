@@ -223,7 +223,13 @@ class RMCP(RMCP_Ping):
         rsp = self.sendrecv(data, 1)
 
         # The 1st response of send message received
-        self.unpack(rsp, msg, cmd_sm)   
+        try:
+            self.unpack(rsp, msg, cmd_sm)   
+        except PyIntfSeqExcept:
+            # The version of HS9216 AMI I tested has a bug of returning the wrong 
+            # seq number in the 1st response.  It occurs around 1%.
+            # Here is for working around the bug
+            pass
 
         retries = 3
         while retries:
