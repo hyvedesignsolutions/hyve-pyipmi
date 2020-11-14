@@ -212,7 +212,7 @@ def _sdr_list_mcloc(self, opt=1, hdl=None):
 def _sdr_list_all(self, opt=1, print_hdl=None):
     # SDR type 1h, 2h
     reading_all = get_sensor_readings(self, opt)
-    print_hdl(reading_all)
+    print_hdl(self, reading_all)
 
     # Other SDR types
     for key in SDR_PRINT_HDL.keys():
