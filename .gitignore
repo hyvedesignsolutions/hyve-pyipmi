@@ -1,6 +1,7 @@
 __pycache__/
-*.py[cod]
-*$py.class
 .vscode/
+etc/
 log/
+*.log
+*.code-workspace
 
