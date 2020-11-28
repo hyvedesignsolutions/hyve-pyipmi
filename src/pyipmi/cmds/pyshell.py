@@ -52,6 +52,7 @@ class PyShell(cmd.Cmd, PyTest):
     from ._sel import do_sel, help_sel
     from ._sensor import do_sensor, help_sensor
     from ._user import do_user, help_user
+    from ._fru import do_fru, help_fru
     from ._raw import do_raw, help_raw
 
     from ._common import print
@@ -79,10 +80,12 @@ class PyShell(cmd.Cmd, PyTest):
         self.do_sel(['list'])
         print('\nCalling sensor list...')
         self.do_sensor(['list'])
-        print('\nCalling lan list...')
+        print('\nCalling lan print 1...')
         self.do_lan(['print', '1'])
         print('\nCalling user list...')
         self.do_user(['list'])
+        print('\nCalling fru print...')
+        self.do_fru(['print'])
         print('\nselftest done.')
     
     def help_selftest(self):
@@ -264,3 +267,13 @@ class PyShell(cmd.Cmd, PyTest):
                 return None
 
         return None
+
+    def complete_fru(self, text, line, begidx, endidx):
+        pos, *_ = self.get_pos(text, line, begidx, endidx)
+
+        if pos == 1:
+            words = ('print', 'read', 'write',)
+            return self.match_words(text, words)
+
+        return None
+

@@ -46,6 +46,7 @@ def find_line(target, src_str):
     ret = '(not found)'
     list1 = src_str.split('\n')    
     for s in list1:
+        s = s.strip()
         if s[:len(target)] == target:
             ret = s
             break
@@ -80,5 +81,10 @@ if __name__ == '__main__':
     cmd.exec_command('lan print 1')
     ret = print_str.get_str()
     ret_all += find_line('RMCP+ Cipher Suites', ret)    
+    print_str.reset()
+
+    cmd.exec_command('fru print')
+    ret = print_str.get_str()
+    ret_all += find_line('Board Manufacturer', ret)    
 
     print(ret_all)

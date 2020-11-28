@@ -41,6 +41,7 @@ from ._sdr import do_sdr
 from ._sel import do_sel
 from ._sensor import do_sensor
 from ._user import do_user
+from ._fru import do_fru
 
 __all__ = [
     'PyCmds',
@@ -55,6 +56,7 @@ PY_CMDS = {
     'sensor': do_sensor,
     'user': do_user,
     'lan': do_lan,
+    'fru': do_fru,
     'raw': do_raw,
 }
 

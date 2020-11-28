@@ -33,7 +33,7 @@
 from .. util.exception import PyMesgExcept, PyMesgCCExcept
 import struct
 
-all = [
+__all__ = [
     'IPMI_Message',
     'IPMI_Raw',
     'ipmi_app',

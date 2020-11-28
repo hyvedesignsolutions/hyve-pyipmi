@@ -734,3 +734,15 @@ USER_PRIVS = {0: 'reserved', 1: 'Callback', 2: 'User', 3: 'Operator', 4: 'Admini
               5: 'OEM', 0x0f: 'No Access'}
 
 AUTH_TYPES = {'none': 1, 'md2': 2, 'md5': 4, 'password': 16, 'oem': 32}
+
+CHASSIS_TYPES = TupleExt((
+    'Unknown', 'Other', 'Unknown', 'Desktop', 'Low Profile Desktop', 'Pizza Box',
+    'Mini Tower', 'Tower', 'Portable', 'Laptop', 'Notebook', 'Hand Held', 
+    'Docking Station', 'All in One', 'Sub Notebook', 'Space-saving', 'Lunch Box',
+    'Main Server Chassis', 'Expansion Chassis', 'SubChassis', 'Bus Expansion Chassis',
+    'Peripheral Chassis', 'RAID Chassis', 'Rack Mount Chassis', 'Sealed-case PC', 
+    'Multi-system chassis', 'Compact PCI', 'Advanced PCI', 'Blade', 'Blade Enclosure',
+    'Tablet', 'Convertible', 'Detachable', 'IoT Gateway', 'Embedded PC', 'Mini PC',
+    'Stick PC',
+))
+

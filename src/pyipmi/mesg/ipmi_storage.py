@@ -32,9 +32,45 @@
 #
 import struct
 from . import IPMI_Message
-from .. util.exception import PyMesgExcept
+from .. util.exception import PyMesgExcept, PyMesgCCExcept
 
 NETFN_STORAGE = 0x0a
+
+class GetFruAreaInfo(IPMI_Message):
+    def __init__(self, fru_id):
+        super(GetFruAreaInfo, self).__init__(NETFN_STORAGE, 0x10)
+        self.req_data = struct.pack('B', fru_id)
+
+    def unpack(self, rsp):
+        return super(GetFruAreaInfo, self).unpack(rsp, '<HB')
+
+class ReadFru(IPMI_Message):
+    def __init__(self, fru_id, offset, count):
+        super(ReadFru, self).__init__(NETFN_STORAGE, 0x11)
+        offset_ls = offset & 0xff
+        offset_ms = (offset >> 8) & 0xff
+        self.req_data = struct.pack('BBBB', fru_id, offset_ls, offset_ms, count)
+
+    def unpack(self, rsp):
+        return super(ReadFru, self).unpack(rsp)
+
+class WriteFru(IPMI_Message):
+    def __init__(self, fru_id, offset, data):
+        super(WriteFru, self).__init__(NETFN_STORAGE, 0x12)
+        offset_ls = offset & 0xff
+        offset_ms = (offset >> 8) & 0xff
+        self.req_data = struct.pack('BBB', fru_id, offset_ls, offset_ms) + data
+
+    def unpack(self, rsp):
+        try:
+            return super(WriteFru, self).unpack(rsp, 'B')            
+        except PyMesgCCExcept as e:
+            if e.cc == 0x80:
+                print('Failed to write FRU.  Write-protected offset (CC=80h).')
+            elif e.cc == 0x81:
+                print('Failed to write FRU.  FRU device busy (CC=81h).')
+            else:
+                print(e)
 
 class GetSDRRepoInfo(IPMI_Message):
     def __init__(self):

@@ -166,8 +166,8 @@ def _user_set_priv(self, argv):
 def help_user(self, argv=None, context=0):
     if context == 0:
         self.print('User Commands:')
-        self.print('    info         [<channel number]')
-        self.print('    list         [<channel number]')
+        self.print('    info         [<channel number>]')
+        self.print('    list         [<channel number>]')
     if context in (0, 1):
         self.print('    set name     <user id> <username>')
         self.print('    set password <user id> [<password> [<16|20>]]')

@@ -59,3 +59,4 @@ if __name__ == '__main__':
     cmd.exec_command('sensor list')
     cmd.exec_command('lan print 1')
     cmd.exec_command('user list')
+    cmd.exec_command('fru print')
