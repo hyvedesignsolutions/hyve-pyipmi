@@ -37,7 +37,7 @@ from . exception import PyConfExcept
 class PyConfig:
     valid_opts = {
         'global': {
-            'interface': (('lan', 'lanplus'), 'lanplus'),
+            'interface': (('lan', 'lanplus', 'kcs'), 'lanplus'),
             'host': (str, 'localhost'),
             'port': (int, 623),
         },
@@ -56,7 +56,12 @@ class PyConfig:
             'priv': (int, 4),
             'kg': (str, ''),
             'no_ping': (bool, True),
-        }
+        },
+
+        'kcs': {
+            'bmc_addr': (int, 0x20),
+            'dev_num': (int, 0),
+        },
     }
 
     def __init__(self):
@@ -125,7 +130,11 @@ class PyConfig:
                     elif PyConfig.valid_opts[s][key][0] is bool:
                         d1[s][key] = self.config.getboolean(s, key)
                     elif PyConfig.valid_opts[s][key][0] is int:
-                        d1[s][key] = self.config.getint(s, key)
+                        val = self.config[s][key]
+                        if val[:2] == '0x' or val[:2] == '0X':
+                            d1[s][key] = int(val[2:], base=16)
+                        else:    
+                            d1[s][key] = self.config.getint(s, key)
                     elif PyConfig.valid_opts[s][key][0] is bytes:
                         d1[s][key] = bytes(self.config[s][key], 'latin_1')
                     else:
@@ -142,8 +151,11 @@ class PyConfig:
                     PyConfExcept('Unknown option value: ' + opt)
             elif vopts[key][0] is bool:
                 opt = bool(opt)
-            elif vopts[key][0] is int:                
-                opt = int(opt)
+            elif vopts[key][0] is int: 
+                if opt[:2] == '0x' or opt[:2] == '0X':
+                    opt = int(opt[2:], base=16)
+                else:    
+                    opt = int(opt)
             elif vopts[key][0] is bytes:
                 opt = bytes(opt, 'latin_1')
 

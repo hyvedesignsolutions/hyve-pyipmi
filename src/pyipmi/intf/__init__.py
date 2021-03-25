@@ -36,6 +36,7 @@ __all__ = [
     'kcs',
     'rmcp',
     'rmcpp',
+    'ioctl',
     'init',    
 ]
 
@@ -63,20 +64,26 @@ def init(opts, ping_only, keep_alive):
         intf.open(opts['lanplus'])
         return intf
 
+    if intf_name == 'kcs':
+        from . kcs import KCS
+        intf = KCS(opts['kcs'])
+        intf.open()
+        return intf
+
     raise PyIntfExcept('Invalid interface specified: ' + intf_name)
 
 class Intf:
-    def __init__(self):
-        pass
-
-    def __del__(self):
-        pass
-
-    def open(self):
+    def open(self, opts):
         pass
 
     def close(self):
         pass
 
-    def sendrecv(self, data):
+    def issue_cmd(self, cmd_cls, *args):
+        pass
+
+    def issue_raw_cmd(self, req, lun=0):
+        pass
+
+    def issue_bridging_cmd(self, dest, target, req, lun=0):
         pass

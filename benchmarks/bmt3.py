@@ -33,6 +33,7 @@ from bm_conf import *
 
 class BMT3(BMT):
     def __init__(self, opts):
+        opts += ' -b {0} -t {1}'.format(bm_b_chnl, bm_b_dest)
         super(BMT3, self).__init__(opts)
 
     def run_commands(self, argv=None):
@@ -52,7 +53,6 @@ class BMT3(BMT):
 
 if __name__ == '__main__':
     opts = '-H {0} -I {1} -U {2} -P {3} -C {4}'.format(bm_host, bm_intf, bm_user, bm_pass, bm_cipher)
-    opts += ' -b {0} -t {1}'.format(bm_b_chnl, bm_b_dest)
 
     test = BMT3(opts)
     sys.exit(test.run())

@@ -55,14 +55,16 @@ def run_testcase(c, opts):
 def delta2str(d):
     return '{0}m{1}.{2}s'.format(int(d.seconds / 60), d.seconds % 60, int(d.microseconds/1000))
 
-# pyipmi options
+# pyipmi & ipmitool options
 pyopts = PyOpts()
 pyopts.add_options()
-opts_p = pyopts.parse_options('-H {0} -I {1} -U {2} -P {3} -C {4}'.format(bm_host, 
-                              bm_intf, bm_user, bm_pass, bm_cipher))
 
-# ipmitool options
-opts_t = '-H {0} -I {1} -U {2} -P {3} -C {4}'.format(bm_host, bm_intf, bm_user, bm_pass, bm_cipher)
+if bm_intf == 'kcs':
+    opts_p = pyopts.parse_options('-I kcs')
+    opts_t = ''
+else:
+    opts_p = pyopts.parse_options('-H {0} -I {1} -U {2} -P {3} -C {4}'.format(bm_host, bm_intf, bm_user, bm_pass, bm_cipher))
+    opts_t = '-H {0} -I {1} -U {2} -P {3} -C {4}'.format(bm_host, bm_intf, bm_user, bm_pass, bm_cipher)
 
 ret_p = [timedelta(seconds=0)] * len(BMP_CLASSES)
 ret_t = [timedelta(seconds=0)] * len(BMT_CLASSES)
