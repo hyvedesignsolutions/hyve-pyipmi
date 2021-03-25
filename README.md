@@ -13,7 +13,8 @@ Samples are included in the package to show how to write test scripts.  The perf
 * Supported IPMI channels
   * RMCP
   * RMCP+
-  * Message bridging from LAN to IPMB
+  * KCS
+  * Message bridging from LAN/KCS to IPMB
 * Console programs
   * pyipmi - a Python program similar to ipmitool
   * pyipmr - a Python program supports "ipmitool raw" and has message bridging capability
@@ -51,6 +52,9 @@ Then, you are able to execute your first PyIPMI command.  For example, we execut
 ```
 $ pyipmi -H 192.168.0.169 -I lanplus -U root -P root123 raw 6 1
 ```
+
+Note that by default, if you choose to use "-I kcs" that goes through the Linux OpenIPMI driver, you will need root privilege to execute the program.
+
 During the first time when the package is used, it automatically generates a user config file in $HOME/.config/pyipmi/pyipmi.conf with default settings.  Then, the options supported will overwrite some of the settings.  In the above example, it specifies four options and issues a raw IPMI command.
 
 After the config file is created, you can choose to either use all the settings in the config file or continue to overwrite some of the options as the previous example.  The program will automatically record the latest overwritten values in the config file.

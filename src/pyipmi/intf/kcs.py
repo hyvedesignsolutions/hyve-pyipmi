@@ -93,8 +93,11 @@ class KCS(Intf):
         self.dev_num = opts.get('dev_num', 0)
 
     def __del__(self):
-        if self.fd is not None:
-            os.close(self.fd)
+        try:
+            if self.fd is not None:
+                os.close(self.fd)
+        except:
+            pass
 
     def open(self):
         IPMICTL_SET_GETS_EVENTS_CMD = IOR('i', 16, ctypes.c_int)
