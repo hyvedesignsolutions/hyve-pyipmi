@@ -39,8 +39,8 @@ with open('requirements.txt', 'r') as fh:
 
 setuptools.setup(
     name='hyve-pyipmi',
-    version='1.0.1',
-    keywords=['ipmi', 'rmcp', 'rmcpp'],
+    version='1.1.0',
+    keywords=['ipmi', 'rmcp', 'rmcpp', 'kcs', 'openipmi'],
     author='Janny Au',
     author_email='jannya@hyvedesignsolutions.com',
     description='Pure Python-based IPMI client developed by Hyve Design Solutions.',
