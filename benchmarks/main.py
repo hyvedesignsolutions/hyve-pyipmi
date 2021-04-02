@@ -59,6 +59,12 @@ def delta2str(d):
 pyopts = PyOpts()
 pyopts.add_options()
 
+# overwrite bm_intf
+if len(sys.argv) > 1:
+    if sys.argv[1] in ('lan', 'lanplus', 'kcs'):
+        bm_intf = sys.argv[1]
+
+# assign command options
 if bm_intf == 'kcs':
     opts_p = pyopts.parse_options('-I kcs')
     opts_t = ''
@@ -91,7 +97,7 @@ for i in range(len(ret_t)):
     print('#{0}: {1}'.format(i + 1, delta2str(ret_t[i] / bm_rounds)))
 
 # Write the test results in a log file
-fout = open('bm_test.log', 'w')
+fout = open('bm_test_{0}.log'.format(bm_intf), 'w')
 
 fout.write('Test Results:\n')
 fout.write('\n--------- pyipmi ----------\n')
