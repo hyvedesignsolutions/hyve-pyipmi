@@ -193,7 +193,7 @@ class PyOpts:
         self.parser.add_option('-H', '--host', dest='host',
                   help='Remote server address.')
         self.parser.add_option('-I', '--interface', dest='interface', 
-                  help='Select the IPMI interface.  Supported interfaces are lan and lanplus (default).')
+                  help='Select the IPMI interface.  Supported interfaces are kcs, lan and lanplus (default).')
         self.parser.add_option('-p', '--port', dest='port', 
                   help='Remote server UDP port to connect to.  Default is 623.')
         self.parser.add_option('-U', '--user', dest='user', 

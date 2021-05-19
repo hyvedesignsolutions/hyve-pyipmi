@@ -54,7 +54,9 @@ class RAKP_Message:
             raise PyIntfExcept('Payload Type is 0x{0:02x}, but expected to be 0x{1:02x}.'.format(
                                                                 payload_type, self.payload_type + 1))
         if tag != self.msg_tag:  # Message Tag
-            raise PyIntfExcept('Message Tag does not match.')
+            #raise PyIntfExcept('Message Tag does not match.')
+            # Workaround for OpenBMC
+            pass
         if cc != 0:  # RMCP+ Status Code
             raise PyIntfCCExcept(rsp[1])
         if sid != self.rcsid:
@@ -108,7 +110,8 @@ class RAKP_1_2(RAKP_Message):
     def pack(self):
         # RAKP 1: console -> BMC
         if self.user is not None:
-            payload = struct.pack('<1s3s4s16sBHB16s', self.msg_tag, b'\0', self.mssid,
+            name_fmt = '<1s3s4s16sBHB' + str(len(self.user)) + 's'
+            payload = struct.pack(name_fmt, self.msg_tag, b'\0', self.mssid,
                                   self.rcrn, self.priv, 0, len(self.user), self.user)
         else:
             payload = struct.pack('<1s3s4s16sBHB', self.msg_tag, b'\0', self.mssid,

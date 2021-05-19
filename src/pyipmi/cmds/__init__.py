@@ -77,8 +77,8 @@ class StrEx(str):
         self.print_str = '' 
 
 class PyCmds(PyTest):
-    def __init__(self, opts_overwrite=None, print_file=sys.stdout):
-        super(PyCmds, self).__init__(opts_overwrite)
+    def __init__(self, opts_overwrite=None, print_file=sys.stdout, keep_alive=False):
+        super(PyCmds, self).__init__(opts_overwrite, keep_alive=keep_alive)
         self.print_file = print_file
 
     @staticmethod

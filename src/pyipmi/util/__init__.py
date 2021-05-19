@@ -78,10 +78,10 @@ class PyTest:
             rsp = self.intf.issue_raw_cmd(req)
             self.print_rsp(rsp)
 
-    def run(self):
+    def run(self, argv=None):
         ret = 1
         try:
-            self.run_commands()
+            self.run_commands(argv)
             ret = 0
         except BaseException as e:
             print(e)
