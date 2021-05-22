@@ -58,27 +58,41 @@ def _fru_get_area(self, fru_id, offset, area_size, area_name):
     if area_size < offset * 8 + 2:
         raise PyCmdsExcept('FRU size is too small to have a {0} Info Area.'.format(area_name), -1)
 
-    # Chassis Info Area Format Version, Chassis Info Area Length
+    # Area Format Version, Area Length
     data = self.intf.issue_cmd(ReadFru, fru_id, offset * 8, 2)
     if data[0] != 2:  
         raise PyCmdsExcept('Failed to get {0} Info Area Length.'.format(area_name), -1)
 
     data = data[1:]
-    chs_len = data[1]
+    area_len = data[1]
 
     # Chassis Info Area
-    if area_size < offset * 8 + chs_len * 8 + 2:
+    read_count = area_len * 8
+    read_offset = offset * 8 + 2    
+    ret = b''
+
+    if area_size < read_offset + read_count:
         raise PyCmdsExcept('FRU size is too small to have a {0} Info Area.'.format(area_name), -1)
 
-    data = self.intf.issue_cmd(ReadFru, fru_id, offset * 8 + 2, chs_len * 8)
-    if data[0] != chs_len * 8:  
-        raise PyCmdsExcept('Failed to get {0} Info Area.'.format(area_name), -1)
-    
-    return data[1:]
+    while read_count > 0:
+        if read_count > 255:
+            read_size = 255
+        else:
+            read_size = read_count
+
+        data = self.intf.issue_cmd(ReadFru, fru_id, read_offset, read_size)
+        read_offset += data[0]
+        read_count -= data[0]
+        ret += data[1:]
+
+    return ret
 
 def _fru_get_field(data, idx):
     field_len = data[idx] & 0x3f
-    field = data[idx+1:idx+field_len+1]
+    field_end = idx+field_len+1
+    if field_len == 0 or field_end >= len(data):
+        return (0, b'') 
+    field = data[idx+1:field_end]
     return (field_len, field)
 
 def _fru_print_chassis_type(self, title, chs_type):
@@ -99,6 +113,7 @@ def _fru_print_all_fields(self, data, area_name, titles, idx_s):
 
         idx += field_len + 1
         count += 1
+        if idx >= len(data): return
         start = data[idx]
 
 def _fru_print_chassis(self, fru_id, offset, area_size):
@@ -143,7 +158,7 @@ def _fru_print_product(self, fru_id, offset, area_size):
     # Retrieve the Board Info Area
     data = _fru_get_area(self, fru_id, offset, area_size, area_name)    
 
-    titles = TupleExt(('Manufacturer', 'Name', 'Part Number', 'Version',
+    titles = TupleExt(('none', 'Manufacturer', 'Name', 'Part Number', 'Version',
                        'Serial Number', 'Asset Tag', 'FRU File ID',))
 
     # Print product fields
