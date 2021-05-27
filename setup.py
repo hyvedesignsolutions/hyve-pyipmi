@@ -39,7 +39,7 @@ with open('requirements.txt', 'r') as fh:
 
 setuptools.setup(
     name='hyve-pyipmi',
-    version='1.1.1',
+    version='1.1.2',
     keywords=['ipmi', 'rmcp', 'rmcpp', 'kcs', 'openipmi'],
     author='Janny Au',
     author_email='jannya@hyvedesignsolutions.com',
@@ -60,6 +60,7 @@ setuptools.setup(
         'pyipmi',
         'pyipmi.cmds',
         'pyipmi.intf',
+        'pyipmi.intf.ioctl',
         'pyipmi.mesg',
         'pyipmi.util',
     ],
@@ -67,6 +68,7 @@ setuptools.setup(
         'pyipmi': 'src/pyipmi',
         'pyipmi.cmds': 'src/pyipmi/cmds',
         'pyipmi.intf': 'src/pyipmi/intf',
+        'pyipmi.intf.ioctl': 'src/pyipmi/intf/ioctl',
         'pyipmi.mesg': 'src/pyipmi/mesg',
         'pyipmi.util': 'src/pyipmi/util',
     },
