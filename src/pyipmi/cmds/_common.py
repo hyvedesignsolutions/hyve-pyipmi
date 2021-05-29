@@ -451,6 +451,9 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
         stat_str = ('ns', 'na', 'ok', 'ns')[stat]
 
         # Convert the sensor reading to human readable format
+        reading = 0
+        reading_str = ''
+
         if stat == 2:
             if opt == 3:
                 reading_str = _conv_sensor_reading(t1, sdr_type, sdr1, False)
@@ -463,7 +466,7 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
 
         if opt in (1, 2):    # sdr list, sdr elist
             if opt == 2:
-                if event_reading_type != 1:     
+                if stat == 2 and event_reading_type != 1:
                     reading_str = _conv_discrete(sdr1, reading, 0, str)
 
             yield (sensor_num, sensor_name, reading_str, stat_str, entity_str)
@@ -495,13 +498,13 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
         # Get absolute values of Hysteresis
         thres[9:] = [x[1:] if x[0] == '-' else x for x in thres[9:]]
 
-        if event_reading_type != 1:
-            asserted_events = _conv_discrete(sdr1, reading)
-        else:
-            if len(t1) >= 3:
-                asserted_events = _conv_threshold(sdr1, t1[2] & 0x3f)   
+        asserted_events = []
+        if stat == 2:
+            if event_reading_type != 1:
+                asserted_events = _conv_discrete(sdr1, reading)
             else:
-                asserted_events = []
+                if len(t1) >= 3:
+                    asserted_events = _conv_threshold(sdr1, t1[2] & 0x3f) 
                 
         ret = [sensor_num, sensor_name, entity_str, entity_name, sensor_type, reading_str, stat_str,]
         ret += thres
