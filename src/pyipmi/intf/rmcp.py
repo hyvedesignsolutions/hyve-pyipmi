@@ -49,8 +49,7 @@ class RMCP_Ping(Intf):
         self.port = opts.get('port', 623)
 
     def __del__(self):
-        if self.socket is not None:
-            self.socket.close()
+        self.close()
 
     def open(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -60,7 +59,12 @@ class RMCP_Ping(Intf):
             raise PyIntfExcept("Failed to connect to host.")
 
     def close(self):
-        pass
+        try:
+            if self.socket:
+                self.socket.close()
+                self.socket = None
+        except:
+            pass
 
     def sendrecv(self, data, retries=3):
         while retries:
@@ -95,13 +99,7 @@ class RMCP(RMCP_Ping):
         super(RMCP, self).__init__(opts)
 
     def __del__(self):
-        try:
-            if self.sess_act:
-                self.close()    # close session
-        except:
-            pass
-        finally:
-            super(RMCP, self).__del__() # close socket
+        self.close()
 
     def open(self, opts):
         if 'auth' in opts.keys() and opts['auth'] not in RMCP_AUTHS.keys():
@@ -147,9 +145,15 @@ class RMCP(RMCP_Ping):
             th.start()
 
     def close(self):
-        # Close Session Command
-        self.issue_cmd(CloseSess, self.sid)
-        self.sess_act = False
+        try:
+            if self.sess_act:
+                # Close Session Command
+                self.issue_cmd(CloseSess, self.sid) # close session
+                self.sess_act = False
+        except:
+            pass
+        finally:
+            super(RMCP, self).close() # close socket
 
     def recv(self):
         r, _, x = select.select([self.socket], [], [], 1.5)

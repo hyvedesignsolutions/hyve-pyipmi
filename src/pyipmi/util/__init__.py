@@ -42,7 +42,8 @@ __all__ = [
 ]
 
 class PyTest:
-    def __init__(self, opts_overwrite=None, ping_only=False, keep_alive=False):
+    def __init__(self, opts_overwrite=None, ping_only=False, keep_alive=False,
+                     raise_except=False):
         self.ping_only = ping_only
 
         try:
@@ -61,8 +62,11 @@ class PyTest:
             self.intf = intf.init(opts, ping_only, keep_alive)
 
         except BaseException as e:
-            print(e)
-            exit(1)
+            if raise_except:
+                raise BaseException(e)
+            else:
+                print(e)
+                exit(1)
 
     def print_rsp(self, rsp):
         print(' '.join(('{0:02x}'.format(i) for i in rsp)))

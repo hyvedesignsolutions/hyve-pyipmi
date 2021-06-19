@@ -34,7 +34,7 @@ import time, sys, builtins
 from collections import defaultdict
 from . _consts import *
 from .. mesg.ipmi_se import *
-from .. mesg.ipmi_storage import GetSDRRepoInfo, GetSDR
+from .. mesg.ipmi_storage import GetSDRRepoInfo, GetSDR, RevSDR
 from .. util.exception import PyExcept, PyCmdsExcept
 
 g_add_ts = 0
@@ -298,7 +298,8 @@ def _conv_sensor_type_and_er(sdr):
     sensor_type = sdr[7]
     event_reading = sdr[8]
 
-    ret = conv_sensor_type(sensor_type) + ' ('
+    ret = '{0:02X}h '.format(sensor_type)
+    ret += conv_sensor_type(sensor_type) + ' ('
     ret +=  conv_event_reading(event_reading) + ')'
 
     return ret
@@ -338,6 +339,29 @@ def _conv_threshold_values(sdr1, opt=0, argv=None):
 
     return thres
 
+def get_one_sdr(self, resv_id, next_id):
+    # Get SDR: Resv ID (2) | Rec ID (2) | offset (1) | bytes_to_read (1)
+    # First, read the first 5 bytes, sensor record header
+    offset = 0
+    b2read = 5
+    sdr1 = self.intf.issue_cmd(GetSDR, resv_id, next_id, offset, b2read)
+
+    # Then, read the following bytes.  Each time read 32 bytes at most
+    offset = 5
+    b2read = sdr1[6]
+    while b2read > 0:
+        if b2read > 32:
+            to_read = 32
+            b2read -= 32
+        else:
+            to_read = b2read
+            b2read = 0
+        rsp1 = self.intf.issue_cmd(GetSDR, resv_id, next_id, offset, to_read)
+        sdr1 += rsp1[2:]
+        offset += to_read
+
+    return sdr1
+
 def load_sdr_repo(self):
     next_id = b'\0'
     sdr_count = 0
@@ -345,8 +369,8 @@ def load_sdr_repo(self):
     def load_one_sdr():
         nonlocal next_id, sdr_count
 
-        # Get SDR: Resv ID (2) | Rec ID (2) | offset (1) | bytes_to_read (1)
-        sdr1 = self.intf.issue_cmd(GetSDR, b'\0', next_id, 0, 0xff)
+        resv_id, = self.intf.issue_cmd(RevSDR)
+        sdr1 = get_one_sdr(self, resv_id, next_id)
         next_id = sdr1[:2]
         rec_type = sdr1[5]
         g_sdr_repo[rec_type].append(sdr1[7:])
@@ -380,14 +404,19 @@ def load_sdr_repo(self):
                 else:
                     mask_r = _conv_discrete(sdr2, ((sdr2[14] & 0x7f) << 8) + sdr2[13], 1)
 
-            g_sensor_map[sensor_num] = (sensor_name, rec_type, len(g_sdr_repo[rec_type]) - 1, 
-                entity_str, entity_name, units, thres, mask_r, mask_s,
-                sensor_type, asserts, deasserts)
+            val = (sensor_name, rec_type, len(g_sdr_repo[rec_type]) - 1, 
+                    entity_str, entity_name, units, thres, mask_r, mask_s,
+                    sensor_type, asserts, deasserts)
+
+            if not g_sensor_map.get(sensor_num, []):
+                g_sensor_map[sensor_num] = [val]
+            else:
+                g_sensor_map[sensor_num].append(val)
 
     global g_add_ts, g_erase_ts, g_sensor_map
     _, rec, _, add_ts, erase_ts, _ = self.intf.issue_cmd(GetSDRRepoInfo)
     if rec == 0:  
-        raise PyCmdsExcept('SDR repository is empty.', False)
+        raise PyCmdsExcept('SDR repository is empty.', -1)
 
     if g_sdr_repo:
         if add_ts == g_add_ts and erase_ts == g_erase_ts:
@@ -424,93 +453,94 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
     load_sdr_repo(self)
     
     for sensor_num in g_sensor_map.keys():
-        (sensor_name, sdr_type, idx, entity_str, entity_name, units, 
-         thres, mask_r, mask_s, sensor_type, asserts, deasserts) = g_sensor_map[sensor_num]
+        for rec in g_sensor_map[sensor_num]:
+            (sensor_name, sdr_type, idx, entity_str, entity_name, units, 
+             thres, mask_r, mask_s, sensor_type, asserts, deasserts) = rec
 
-        if sdr_type == 3:   continue    # Do not handle Event-Only SDRs here
+            if sdr_type == 3:   continue    # Do not handle Event-Only SDRs here
 
-        sdr1 = g_sdr_repo[sdr_type][idx]
-        event_reading_type = sdr1[8]
+            sdr1 = g_sdr_repo[sdr_type][idx]
+            event_reading_type = sdr1[8]
 
-        # filter SDR type
-        if filter_sdr != 0 and filter_sdr != sdr_type:
-            continue
+            # filter SDR type
+            if filter_sdr != 0 and filter_sdr != sdr_type:
+                continue
 
-        # filter sensor type
-        if filter_sensor_type != 0 and filter_sensor_type != sdr1[7]:
-            continue
+            # filter sensor type
+            if filter_sensor_type != 0 and filter_sensor_type != sdr1[7]:
+                continue
 
-        # IPMI: Get sensor reading 
-        try:
-            t1 = self.intf.issue_cmd(GetSensorReading, sensor_num)
-        except:
-            continue
-
-        # Sensor status
-        stat = (t1[1] & 0x7f) >> 5
-        stat_str = ('ns', 'na', 'ok', 'ns')[stat]
-
-        # Convert the sensor reading to human readable format
-        reading = 0
-        reading_str = ''
-
-        if stat == 2:
-            if opt == 3:
-                reading_str = _conv_sensor_reading(t1, sdr_type, sdr1, False)
-            else:
-                reading, reading_str = _conv_sensor_reading(t1, sdr_type, sdr1, True, True)                    
-        elif stat & 2 == 0:
-            reading_str = 'disabled'
-        else:
-            reading_str = 'not available'
-
-        if opt in (1, 2):    # sdr list, sdr elist
-            if opt == 2:
-                if stat == 2 and event_reading_type != 1:
-                    reading_str = _conv_discrete(sdr1, reading, 0, str)
-
-            yield (sensor_num, sensor_name, reading_str, stat_str, entity_str)
-            continue
-
-        # The remaining is for opt == 3 or 4, i.e. sdr slist/vlist or sensor list/vlist        
-        if ext:  # In ext mode, overwrite the thresholds from SDR with the ones from command
+            # IPMI: Get sensor reading 
             try:
-                # Get Sensor Thresholds command
-                argv = self.intf.issue_cmd(GetSensorThres, sensor_num)
-                thres[:6] = _conv_threshold_values(sdr1, 1, argv[1:])
+                t1 = self.intf.issue_cmd(GetSensorReading, sensor_num)
             except:
-                pass
+                continue
 
-        if opt == 3:  # sdr slist or sensor list
-            ret = [sensor_num, sensor_name, reading_str, units, stat_str,] + thres[:6]
-            yield ret
-            continue
+            # Sensor status
+            stat = (t1[1] & 0x7f) >> 5
+            stat_str = ('ns', 'na', 'ok', 'ns')[stat]
 
-        # The remaining is all for opt == 4, i.e. sdr vlist or sensor vlist
-        if ext:  # In ext mode, overwrite the hysteresis from SDR with the ones from command
-            try:
-                # Get Sensor Hysteresis command
-                argv = self.intf.issue_cmd(GetSensorHys, sensor_num)
-                thres[9:] = _conv_threshold_values(sdr1, 2, argv)
-            except:
-                pass
+            # Convert the sensor reading to human readable format
+            reading = 0
+            reading_str = ''
 
-        # Get absolute values of Hysteresis
-        thres[9:] = [x[1:] if x[0] == '-' else x for x in thres[9:]]
-
-        asserted_events = []
-        if stat == 2:
-            if event_reading_type != 1:
-                asserted_events = _conv_discrete(sdr1, reading)
+            if stat == 2:
+                if opt == 3:
+                    reading_str = _conv_sensor_reading(t1, sdr_type, sdr1, False)
+                else:
+                    reading, reading_str = _conv_sensor_reading(t1, sdr_type, sdr1, True, True)                    
+            elif stat & 2 == 0:
+                reading_str = 'disabled'
             else:
-                if len(t1) >= 3:
-                    asserted_events = _conv_threshold(sdr1, t1[2] & 0x3f) 
+                reading_str = 'not available'
+
+            if opt in (1, 2):    # sdr list, sdr elist
+                if opt == 2:
+                    if stat == 2 and event_reading_type != 1:
+                        reading_str = _conv_discrete(sdr1, reading, 0, str)
+
+                yield (sensor_num, sensor_name, reading_str, stat_str, entity_str)
+                continue
+
+            # The remaining is for opt == 3 or 4, i.e. sdr slist/vlist or sensor list/vlist        
+            if ext:  # In ext mode, overwrite the thresholds from SDR with the ones from command
+                try:
+                    # Get Sensor Thresholds command
+                    argv = self.intf.issue_cmd(GetSensorThres, sensor_num)
+                    thres[:6] = _conv_threshold_values(sdr1, 1, argv[1:])
+                except:
+                    pass
+
+            if opt == 3:  # sdr slist or sensor list
+                ret = [sensor_num, sensor_name, reading_str, units, stat_str,] + thres[:6]
+                yield ret
+                continue
+
+            # The remaining is all for opt == 4, i.e. sdr vlist or sensor vlist
+            if ext:  # In ext mode, overwrite the hysteresis from SDR with the ones from command
+                try:
+                    # Get Sensor Hysteresis command
+                    argv = self.intf.issue_cmd(GetSensorHys, sensor_num)
+                    thres[9:] = _conv_threshold_values(sdr1, 2, argv)
+                except:
+                    pass
+
+            # Get absolute values of Hysteresis
+            thres[9:] = [x[1:] if x[0] == '-' else x for x in thres[9:]]
+
+            asserted_events = []
+            if stat == 2:
+                if event_reading_type != 1:
+                    asserted_events = _conv_discrete(sdr1, reading)
+                else:
+                    if len(t1) >= 3:
+                        asserted_events = _conv_threshold(sdr1, t1[2] & 0x3f) 
                 
-        ret = [sensor_num, sensor_name, entity_str, entity_name, sensor_type, reading_str, stat_str,]
-        ret += thres
-        ret += [asserts, deasserts, event_reading_type, asserted_events, mask_r, mask_s,]
+            ret = [sensor_num, sensor_name, entity_str, entity_name, sensor_type, reading_str, stat_str,]
+            ret += thres
+            ret += [asserts, deasserts, event_reading_type, asserted_events, mask_r, mask_s,]
                             
-        yield ret
+            yield ret
 
 def print_sensor_list1(self, reading_all):
     for sensor_num, sensor_name, reading, stat, _ in reading_all:

@@ -30,13 +30,15 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
-from .. mesg.ipmi_storage import GetSDRRepoInfo, GetSDRRepoAllocInfo
+import os
+from .. mesg.ipmi_storage import GetSDRRepoInfo, GetSDRRepoAllocInfo, RevSDR, \
+                                ClearSDR, AddSDR, PartialAddSDR
 from . _common import get_sensor_readings, print_sensor_list1, print_sensor_list2, \
                     print_sensor_list3, print_sensor_list4, conv_time, do_command, \
                     bcd2str, str2int, get_sdr_repo, conv_sensor_type, conv_entity_id, \
-                    print_sensor_type_list
+                    print_sensor_type_list, get_one_sdr
 from . _consts import TupleExt, ENTITY_DEVICE_CODES
-from .. util.exception import PyCmdsArgsExcept
+from .. util.exception import PyCmdsArgsExcept, PyCmdsExcept
 
 def _get_event_sdr(self, opt):
     sdr_repo = get_sdr_repo(self)
@@ -279,6 +281,75 @@ def _sdr_info(self, argv):
         self.print('Largest Free Blk                    : {0}'.format(t1[3]))
         self.print('Max Record Size                     : {0}'.format(t1[4]))    
 
+def _sdr_dump(self, argv):
+    if len(argv) < 2:
+        raise PyCmdsArgsExcept(1)
+
+    next_id = b'\0'
+    sdr_count = 0
+
+    _, rec, *_ = self.intf.issue_cmd(GetSDRRepoInfo)
+    if rec == 0:  
+        raise PyCmdsExcept('SDR repository is empty.', -1)
+
+    resv_id, = self.intf.issue_cmd(RevSDR)
+    with open(argv[1], 'wb') as out_file:
+        self.print('Dumping Sensor Data Repository to \'' + argv[1] + '\'.')
+        while next_id != b'\xff\xff':
+            if sdr_count > rec: break   # already got more SDRs than the total # 
+            sdr1 = get_one_sdr(self, resv_id, next_id)
+            next_id = sdr1[:2]
+            out_file.write(sdr1[2:])
+            sdr_count += 1
+
+def _sdr_fill(self, argv):
+    if len(argv) < 2:
+        raise PyCmdsArgsExcept(1)
+
+    file_size = os.stat(argv[1]).st_size
+
+    # clear SDR repo
+    resv_id, = self.intf.issue_cmd(RevSDR)
+    self.intf.issue_cmd(ClearSDR, resv_id, 0xaa)
+    self.print('The SDR repo has been cleared.')
+
+    # adding SDR
+    self.print('Filling Sensor Data Repository from \'' + argv[1] + '\'.')
+    with open(argv[1], 'rb') as in_file:
+        count = 0
+        while count < file_size:
+            sdr1 = in_file.read(5)
+            count += 5
+            rec_len = sdr1[4]
+            sdr1 += in_file.read(rec_len)
+            count += rec_len
+
+            wlen = len(sdr1)
+            if wlen <= 32:
+                # directly call Add SDR
+                self.intf.issue_cmd(AddSDR, sdr1)
+            else:
+                # reserve SDR
+                resv_id, = self.intf.issue_cmd(RevSDR)
+                # partial add SDR
+                offset = 0
+                rec_id, = self.intf.issue_cmd(PartialAddSDR, resv_id, b'\0', offset, 
+                                              0, sdr1[:32])
+                wlen -= 32
+                offset += 32
+                while wlen > 0:
+                    if wlen <= 32:
+                        # the last request
+                        self.intf.issue_cmd(PartialAddSDR, resv_id, rec_id, offset, 
+                                            1, sdr1[offset:])
+                        wlen = 0
+                    else:
+                        # adding in progress
+                        self.intf.issue_cmd(PartialAddSDR, resv_id, rec_id, offset, 
+                                            0, sdr1[offset:offset+32])
+                        offset += 32
+                        wlen -= 32
+
 def help_sdr(self, argv=None, context=0):
     self.print('SDR Commands:')
     self.print('    list | elist | slist | vlist [options]')
@@ -289,6 +360,8 @@ def help_sdr(self, argv=None, context=0):
     self.print('        fru')
     self.print('        mcloc')
     self.print('        type [<sensor_type>]')
+    self.print('    dump <output file>')
+    self.print('    fill <input file>')
     self.print('    info')
     self.print('    help')
 
@@ -298,6 +371,8 @@ SDR_CMDS = {
     'slist': _sdr_list,
     'vlist': _sdr_list,
     'info': _sdr_info,
+    'dump': _sdr_dump,
+    'fill': _sdr_fill,
     'help': help_sdr,
 }
 

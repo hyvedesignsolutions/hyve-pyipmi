@@ -104,6 +104,30 @@ class GetSDR(IPMI_Message):
     def unpack(self, rsp):
         return super(GetSDR, self).unpack(rsp)
 
+class AddSDR(IPMI_Message):
+    def __init__(self, data):
+        super(AddSDR, self).__init__(NETFN_STORAGE, 0x24)
+        self.req_data = data
+
+    def unpack(self, rsp):
+        return super(AddSDR, self).unpack(rsp, '<2s')
+
+class PartialAddSDR(IPMI_Message):
+    def __init__(self, rev_id, rec_id, offset, stat, data):
+        super(PartialAddSDR, self).__init__(NETFN_STORAGE, 0x25)
+        self.req_data = struct.pack('<2s2sBB', rev_id, rec_id, offset, stat) + data
+
+    def unpack(self, rsp):
+        return super(PartialAddSDR, self).unpack(rsp, '<2s')
+
+class ClearSDR(IPMI_Message):
+    def __init__(self, rev, stat):
+        super(ClearSDR, self).__init__(NETFN_STORAGE, 0x27)
+        self.req_data = struct.pack('2sBBBB', rev, 0x43, 0x4c, 0x52, stat)
+
+    def unpack(self, rsp):
+        return super(ClearSDR, self).unpack(rsp, 'B')
+
 class GetSELInfo(IPMI_Message):
     def __init__(self):
         super(GetSELInfo, self).__init__(NETFN_STORAGE, 0x40)

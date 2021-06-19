@@ -124,7 +124,7 @@ def print_sel_list(self, sel_all, opt=1, sensor_map=None):
             self.print('{0:>4x} | {1} | {2} #{3:02X}h | {4} | {5}'.format(
                   rec_id, ts, sensor_type_str, sensor_num, event_str, event_dir))
         else:
-            sensor_name, *_ = sensor_map.get(sensor_num, ('#{0:02X}h'.format(sensor_num), 0, 0))
+            sensor_name, *_ = sensor_map.get(sensor_num, ('#{0:02X}h'.format(sensor_num), 0, 0))[0]
             if opt == 2:
                 self.print('{0:>4x} | {1} | {2}: {3} | {4} | {5}'.format(
                       rec_id, ts, sensor_type_str, sensor_name, event_str, event_dir))
