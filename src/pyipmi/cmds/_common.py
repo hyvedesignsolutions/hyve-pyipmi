@@ -449,10 +449,17 @@ def get_sensor_map(self):
     load_sdr_repo(self)
     return g_sensor_map    
 
-def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=False):
+def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=False,
+                        filter_sensor_num=-1):
     load_sdr_repo(self)
-    
-    for sensor_num in g_sensor_map.keys():
+    keys = g_sensor_map.keys()
+    if filter_sensor_num != -1:
+        if not filter_sensor_num in keys:
+            raise PyCmdsExcept('Sensor number: {0:02X}h was not found.'.format(
+                               filter_sensor_num), -1)
+        keys = (filter_sensor_num,)
+
+    for sensor_num in keys:
         for rec in g_sensor_map[sensor_num]:
             (sensor_name, sdr_type, idx, entity_str, entity_name, units, 
              thres, mask_r, mask_s, sensor_type, asserts, deasserts) = rec

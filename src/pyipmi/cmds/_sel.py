@@ -32,9 +32,10 @@
 #
 from .. mesg.ipmi_storage import GetSELInfo, GetSELAllocInfo, GetSELTime, \
                                 ClearSEL, GetSELEntry, RevSEL
+from .. util.exception import PyCmdsArgsExcept
 from . _common import conv_time, bcd2str, conv_sensor_type, get_sensor_map, \
-                    conv_event_reading, do_command
-from . _consts import TupleExt, GENERIC_EVENT_TYPES, SPECIFIC_EVENT_TYPES
+                    conv_event_reading, do_command, str2int
+from . _consts import GENERIC_EVENT_TYPES, SPECIFIC_EVENT_TYPES
 
 def _sel_info(self, argv):
     ver, rec, free, add_ts, erase_ts, op = self.intf.issue_cmd(GetSELInfo)
@@ -164,6 +165,21 @@ def _sel_list(self, argv):
     opt, print_hdl = SEL_PRINT_HDL[argv[0]]
     print_hdl(self, sel_all, opt, sensor_map)
 
+def _sel_get(self, argv):
+    if len(argv) < 2:
+        raise PyCmdsArgsExcept(1)
+
+    rec_id = str2int(argv[1])
+    if rec_id == -1:
+        raise PyCmdsArgsExcept(3, 0, argv[1])
+    rec_id = rec_id.to_bytes(2, 'little')
+
+    # Get SEL Entry
+    _, *sel1 = self.intf.issue_cmd(GetSELEntry, rec_id)
+    sensor_map = get_sensor_map(self)
+    opt, print_hdl = SEL_PRINT_HDL[argv[0]]
+    print_hdl(self, (sel1,), opt, sensor_map)
+
 def _sel_clear(self, argv):
     rev, = self.intf.issue_cmd(RevSEL)
     prog, = self.intf.issue_cmd(ClearSEL, rev, 0xaa)
@@ -179,14 +195,19 @@ def _sel_time(self, argv):
     
 def help_sel(self, argv=None, context=0):
     self.print('SEL Commands:')
-    for cmd in SEL_CMDS.keys():
-        self.print('    {0}'.format(cmd))    
+    self.print('    list | elist | vlist')
+    self.print('    get <record_id>')
+    self.print('    clear')
+    self.print('    time')
+    self.print('    info')
+    self.print('    help')
 
 SEL_CMDS = {
     'info': _sel_info,
     'list': _sel_list,
     'elist': _sel_list,
     'vlist': _sel_list,
+    'get': _sel_get,
     'clear': _sel_clear,
     'time': _sel_time,
     'help': help_sel,    
@@ -196,6 +217,7 @@ SEL_PRINT_HDL = {
     'list': (1, print_sel_list),
     'elist': (2, print_sel_list),
     'vlist': (4, print_sel_list),
+    'get': (4, print_sel_list),
 }
 
 def do_sel(self, argv):

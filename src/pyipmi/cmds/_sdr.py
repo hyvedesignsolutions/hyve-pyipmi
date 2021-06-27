@@ -281,6 +281,18 @@ def _sdr_info(self, argv):
         self.print('Largest Free Blk                    : {0}'.format(t1[3]))
         self.print('Max Record Size                     : {0}'.format(t1[4]))    
 
+def _sdr_get(self, argv):
+    if len(argv) < 2:
+        raise PyCmdsArgsExcept(1)
+
+    sensor_num = str2int(argv[1])
+    if sensor_num == -1:
+        raise PyCmdsArgsExcept(3, 0, argv[1])
+
+    opt, print_hdl = SENSOR_PRINT_HDL[argv[0]]
+    reading_all = get_sensor_readings(self, opt, 0, 0, False, sensor_num)
+    print_hdl(self, reading_all)
+
 def _sdr_dump(self, argv):
     if len(argv) < 2:
         raise PyCmdsArgsExcept(1)
@@ -360,6 +372,7 @@ def help_sdr(self, argv=None, context=0):
     self.print('        fru')
     self.print('        mcloc')
     self.print('        type [<sensor_type>]')
+    self.print('    get <sensor number>')
     self.print('    dump <output file>')
     self.print('    fill <input file>')
     self.print('    info')
@@ -370,6 +383,7 @@ SDR_CMDS = {
     'elist': _sdr_list,
     'slist': _sdr_list,
     'vlist': _sdr_list,
+    'get': _sdr_get,
     'info': _sdr_info,
     'dump': _sdr_dump,
     'fill': _sdr_fill,
@@ -381,6 +395,7 @@ SENSOR_PRINT_HDL = {
     'elist': (2, print_sensor_list2),
     'slist': (3, print_sensor_list3),
     'vlist': (4, print_sensor_list4),
+    'get': (4, print_sensor_list4),
 }
 
 SDR_PRINT_HDL = {

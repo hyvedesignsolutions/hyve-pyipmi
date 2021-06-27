@@ -58,15 +58,30 @@ def _sensor_list(self, argv):
     reading_all = get_sensor_readings(self, opt, 0, filter_sensor_type, True)
     print_hdl(self, reading_all)
 
+def _sensor_get(self, argv):
+    if len(argv) < 2:
+        raise PyCmdsArgsExcept(1)
+
+    sensor_num = str2int(argv[1])
+    if sensor_num == -1:
+        raise PyCmdsArgsExcept(3, 0, argv[1])
+
+    opt = 4
+    print_hdl = print_sensor_list4
+    reading_all = get_sensor_readings(self, opt, 0, 0, True, sensor_num)
+    print_hdl(self, reading_all)    
+
 def help_sensor(self, argv=None, context=0):
     self.print('Sensor Commands:')
     self.print('    list [type [<sensor_type>]]')
     self.print('    vlist [type [<sensor_type>]]')
+    self.print('    get <sensor number>')
     self.print('    help')
 
 SENSOR_CMDS = {
     'list': _sensor_list,
     'vlist': _sensor_list,
+    'get': _sensor_get,
     'help': help_sensor,    
 }
 
