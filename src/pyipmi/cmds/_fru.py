@@ -33,9 +33,13 @@
 import os, struct
 from .. mesg.ipmi_app import GetDeviceID
 from .. mesg.ipmi_storage import GetFruAreaInfo, ReadFru, WriteFru
+from .. util import checksum
 from .. util.exception import PyCmdsExcept, PyCmdsArgsExcept
 from . _consts import TupleExt, CHASSIS_TYPES
 from . _common import do_command, get_sdr_repo, str2int, conv_time
+
+FRU_BUF_SIZE = 32
+AREA_NAMES = {'c': 'Chassis', 'b': 'Board', 'p': 'Product'}
 
 def _fru_get_common(self, fru_id, area_size):
     if area_size < 8:
@@ -66,8 +70,8 @@ def _fru_get_area(self, fru_id, offset, area_size, area_name):
     data = data[1:]
     area_len = data[1]
 
-    # Chassis Info Area
-    read_count = area_len * 8
+    # xx Info Area
+    read_count = area_len * 8 - 2
     read_offset = offset * 8 + 2    
     ret = b''
 
@@ -117,7 +121,7 @@ def _fru_print_all_fields(self, data, area_name, titles, idx_s):
         start = data[idx]
 
 def _fru_print_chassis(self, fru_id, offset, area_size):
-    area_name = 'Chassis'
+    area_name = AREA_NAMES['c']
 
     # Retrieve the Chassis Info Area
     data = _fru_get_area(self, fru_id, offset, area_size, area_name)    
@@ -137,7 +141,7 @@ def _fru_print_board_time(self, title, mfg_time):
     self.print('  {0:24}: {1}'.format(title, conv_time(ts)))
 
 def _fru_print_board(self, fru_id, offset, area_size):
-    area_name = 'Board'
+    area_name = AREA_NAMES['b']
 
     # Retrieve the Board Info Area
     data = _fru_get_area(self, fru_id, offset, area_size, area_name)    
@@ -153,7 +157,7 @@ def _fru_print_board(self, fru_id, offset, area_size):
     _fru_print_all_fields(self, data, area_name, titles, 4)
 
 def _fru_print_product(self, fru_id, offset, area_size):
-    area_name = 'Product'
+    area_name = AREA_NAMES['p']
 
     # Retrieve the Board Info Area
     data = _fru_get_area(self, fru_id, offset, area_size, area_name)    
@@ -216,11 +220,8 @@ def _fru_print(self, argv):
     if not flag and req_id != -1:
         self.print('Cannot find FRU ID {0} from SDR.'.format(req_id))
 
-FRU_BUF_SIZE = 64
 def _fru_read(self, fru_id, fru_file, area_size):
-    global FRU_BUF_SIZE    
     offset = 0
-
     with open(fru_file, 'wb') as out_file:
         while offset < area_size:
             data = self.intf.issue_cmd(ReadFru, fru_id, offset, FRU_BUF_SIZE)
@@ -228,15 +229,17 @@ def _fru_read(self, fru_id, fru_file, area_size):
             out_file.write(data[1:])
             offset += count        
 
+    self.print('Done')
+
 def _fru_write(self, fru_id, fru_file, area_size):
     file_size = os.stat(fru_file).st_size
     if area_size < file_size:
         raise PyCmdsExcept('ERROR: The input file size {0} is bigger than the target FRU area size {1}.'
                             .format(file_size, area_size), -1)
 
-    global FRU_BUF_SIZE
-    offset = 0
+    self.print('Size to Write    : {0} bytes'.format(file_size))
 
+    offset = 0
     with open(fru_file, 'rb') as in_file:
         while offset < area_size:
             chunk = in_file.read(FRU_BUF_SIZE)
@@ -256,23 +259,141 @@ def _fru_read_write(self, argv):
     area_size, _ = self.intf.issue_cmd(GetFruAreaInfo, fru_id)
     if area_size == 0:  
         raise PyCmdsExcept('The area size of the FRU device with ID {0} is zero.'.format(fru_id), -1)
+    
+    # print fru size
+    self.print('Fru Size         : {0} bytes'.format(area_size))
 
     if argv[0] == 'write':
         _fru_write(self, fru_id, fru_file, area_size)
     else:
         _fru_read(self, fru_id, fru_file, area_size)
 
+def _fru_edit_imp(self, fru_id, area_size, sec, sec_idx, sec_str):
+    # get the offset of the area
+    offset_c, offset_b, offset_p = _fru_get_common(self, fru_id, area_size)
+    if ((sec == 'c' and offset_c == 0) or (sec == 'b' and offset_b == 0) 
+        or (sec == 'p' and offset_p == 0)):
+        raise PyCmdsExcept(
+            'ERROR: the offset of area {0} is zero in the Common Header.'.format(
+             AREA_NAMES[sec]))
+
+    if sec == 'c': 
+        offset = offset_c
+        start_offset = 1
+    elif sec == 'b': 
+        offset = offset_b
+        start_offset = 4
+    elif sec == 'p': 
+        offset = offset_p
+        start_offset = 1
+    
+    # retrive the data of the area
+    data = _fru_get_area(self, fru_id, offset, area_size, AREA_NAMES[sec]) 
+
+    # seek the field to be edited
+    curr_idx = 0
+    get_field_len = lambda data, idx: data[idx] & 0x3f
+    field_len = get_field_len(data, start_offset)
+    while curr_idx < sec_idx:
+        start_offset += field_len + 1
+        if data[start_offset] == 0xc1:
+            raise PyCmdsExcept('The index: {0} is out of range in the {1} Info Area.'.format(
+                               sec_idx, AREA_NAMES[sec]), -1)
+
+        field_len = get_field_len(data, start_offset)
+        curr_idx += 1
+
+    if len(sec_str) == field_len:
+        # the length of the value doesn't change
+        data_new = (data[:start_offset+1] + sec_str.encode('latin_1') 
+                    + data[start_offset+1+field_len:-1])
+    elif len(sec_str) < field_len:
+        # the length of the value becomes shorter
+        diff = field_len - len(sec_str)
+        type_len = data[start_offset] - diff 
+        data_new = (data[:start_offset] 
+                    + type_len.to_bytes(1, byteorder='little') 
+                    + sec_str.encode('latin_1')
+                    + data[start_offset+1+field_len:-1]) 
+        # padding
+        data_new += b'\x00' * diff
+    else:
+        # the length of the value becomes longer
+        # this needs to check the total length
+        diff = len(sec_str) - field_len
+        unused = len(data) - data.rfind(b'\xc1') - 2
+
+        if diff > unused or len(sec_str) > 63:
+            raise PyCmdsExcept('ERROR: Input string {0} is too long.'.sec_str)
+        type_len = data[start_offset] + diff 
+        data_new = (data[:start_offset] 
+                    + type_len.to_bytes(1, byteorder='little') 
+                    + sec_str.encode('latin_1')
+                    + data[start_offset+1+field_len:-1-diff]) 
+
+    # adding the first two bytes
+    area_len = int((len(data_new) + 3) / 8)
+    data_new = b'\x01' + area_len.to_bytes(1, byteorder='little') + data_new
+
+    # calculate checksum
+    data_new += checksum(data_new)
+
+    # write fru
+    total_bytes = len(data_new) 
+    offset *= 8
+    while total_bytes > 0:
+        if total_bytes >= FRU_BUF_SIZE:
+            to_write = FRU_BUF_SIZE
+        else:
+            to_write = total_bytes
+
+        count, = self.intf.issue_cmd(WriteFru, fru_id, offset, data_new[:to_write])
+        total_bytes -= to_write
+        if not total_bytes: break
+        offset += count 
+        data_new = data_new[to_write:]
+
+def _fru_edit(self, argv):
+    #edit <fru id> field <section> <index> <string>
+    if len(argv) < 6:
+        raise PyCmdsArgsExcept(1)
+
+    fru_id = str2int(argv[1])
+    if fru_id == -1:
+        raise PyCmdsArgsExcept(3, 0, argv[1])
+
+    area_size, _ = self.intf.issue_cmd(GetFruAreaInfo, fru_id)
+    if area_size == 0:  
+        raise PyCmdsExcept('The area size of the FRU device with ID {0} is zero.'.format(fru_id), -1)
+
+    if argv[2] != 'field':
+        raise PyCmdsArgsExcept(3, 0, argv[2])
+
+    sec = argv[3]
+    if sec not in ('c', 'b', 'p'):        
+        raise PyCmdsArgsExcept(2, 0, sec)
+
+    sec_idx = str2int(argv[4])
+    if sec_idx == -1:
+        raise PyCmdsArgsExcept(3, 0, argv[4])
+
+    sec_str = argv[5]
+    
+    _fru_edit_imp(self, fru_id, area_size, sec, sec_idx, sec_str)
+
 def help_fru(self, argv=None, context=0):
     self.print('FRU Commands:')
     self.print('    print   [<fru_id>]')
     self.print('    read    <fru id> <file name>')
     self.print('    write   <fru id> <file name>')
+    self.print('    edit <fru id> field <section(c,b,p)> <index> <string>')
     self.print('    help')
 
 FRU_CMDS = {
     'print': _fru_print,
     'read': _fru_read_write,
     'write': _fru_read_write,
+    'edit': _fru_edit,
     'help': help_fru, 
 }
 

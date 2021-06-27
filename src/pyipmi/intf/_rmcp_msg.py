@@ -32,6 +32,7 @@
 #
 import struct
 from . _crypto import *
+from .. util import checksum
 from .. util.exception import PyIntfExcept, PyIntfSeqExcept
 
 class RMCP_Message:

@@ -36,10 +36,23 @@ from . config import PyConfig
 from .. import intf
 
 __all__ = [
+    'checksum',
     'PyTest',
     'config',
     'exception',
 ]
+
+def checksum(data, fmt=bytes):
+    chksum = 0
+    for i in data:
+        chksum += i
+    chksum &= 0xff
+    if chksum != 0: chksum = 256 - chksum
+
+    if fmt == bytes:
+        return chksum.to_bytes(1, byteorder='little')
+    else:
+        return chksum
 
 class PyTest:
     def __init__(self, opts_overwrite=None, ping_only=False, keep_alive=False,

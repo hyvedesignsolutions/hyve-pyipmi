@@ -35,18 +35,6 @@ import Crypto.Cipher.AES, Crypto.Hash.HMAC, Crypto.Hash.MD2, Crypto.Hash.MD5
 import Crypto.Hash.SHA, Crypto.Hash.SHA256
 
 # Common
-def checksum(data, fmt=bytes):
-    chksum = 0
-    for i in data:
-        chksum += i
-    chksum &= 0xff
-    if chksum != 0: chksum = 256 - chksum
-
-    if fmt == bytes:
-        return struct.pack('B', chksum)
-    else:
-        return chksum
-
 def conv_str2bytes(org):
     if type(org) is bytes: return org
     elif type(org) is not str: return None

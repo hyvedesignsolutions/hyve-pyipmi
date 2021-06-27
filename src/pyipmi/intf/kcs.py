@@ -32,7 +32,6 @@
 #
 import ctypes, fcntl, os, select, struct, sys
 from . ioctl import IOR, IOWR
-from . _crypto import checksum
 from . import Intf
 from .. mesg import IPMI_Raw
 from .. mesg.ipmi_app import IPMI_SendMsg
