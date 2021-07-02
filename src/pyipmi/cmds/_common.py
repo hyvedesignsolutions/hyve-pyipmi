@@ -449,6 +449,17 @@ def get_sensor_map(self):
     load_sdr_repo(self)
     return g_sensor_map    
 
+def get_threshold_status(comp, opt=1):
+    ret = 'ok'
+    comp_stat = {4: ('nr', 'lnr'), 32: ('nr', 'unr'), 2: ('cr', 'lcr'),
+                 16: ('cr', 'ucr'), 1: ('nc', 'lnc'), 8: ('nc', 'unc')}
+    
+    for val in comp_stat.keys():
+        if comp & val:
+            return comp_stat[val][opt-1]
+
+    return ret
+
 def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=False,
                         filter_sensor_num=-1):
     load_sdr_repo(self)
@@ -486,6 +497,10 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
             # Sensor status
             stat = (t1[1] & 0x7f) >> 5
             stat_str = ('ns', 'na', 'ok', 'ns')[stat]
+
+            # Present threshold comparison status
+            if event_reading_type == 1 and stat_str == 'ok' and len(t1) > 2:
+                stat_str = get_threshold_status(t1[2], opt)
 
             # Convert the sensor reading to human readable format
             reading = 0
@@ -556,7 +571,7 @@ def print_sensor_list1(self, reading_all):
 
 def print_sensor_list2(self, reading_all):
     for num, name, reading, stat, entity in reading_all:
-        fmt = '{0:02X}h | {1:16} | {3:>5} | {2} | {4}' 
+        fmt = '{0:02X}h | {1:16} | {3:>5} | {2:3} | {4}' 
         self.print(fmt.format(num, name, stat, entity, reading))
 
 def print_sensor_list3(self, reading_all):
