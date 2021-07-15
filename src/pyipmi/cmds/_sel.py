@@ -30,6 +30,7 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
+import struct
 from .. mesg.ipmi_storage import GetSELInfo, GetSELAllocInfo, GetSELTime, \
                                 ClearSEL, GetSELEntry, RevSEL
 from .. util.exception import PyCmdsArgsExcept
@@ -125,7 +126,12 @@ def print_sel_list(self, sel_all, opt=1, sensor_map=None):
             self.print('{0:>4x} | {1} | {2} #{3:02X}h | {4} | {5}'.format(
                   rec_id, ts, sensor_type_str, sensor_num, event_str, event_dir))
         else:
-            sensor_name, *_ = sensor_map.get(sensor_num, ('#{0:02X}h'.format(sensor_num), 0, 0))[0]
+            sdr_entries = sensor_map.get(sensor_num, None)
+            if sdr_entries:
+                sensor_name, *_ = sdr_entries[0]
+            else:
+                sensor_name = '#{0:02X}h'.format(sensor_num)
+
             if opt == 2:
                 self.print('{0:>4x} | {1} | {2}: {3} | {4} | {5}'.format(
                       rec_id, ts, sensor_type_str, sensor_name, event_str, event_dir))
@@ -192,7 +198,53 @@ def _sel_clear(self, argv):
 def _sel_time(self, argv):
     curr, = self.intf.issue_cmd(GetSELTime)
     self.print('Present Timestamp: {0}'.format(conv_time(curr)))
-    
+
+def _sel_writeraw(self, argv):
+    if len(argv) < 2:
+        raise PyCmdsArgsExcept(1)
+
+    fout = open(argv[1], 'wb')
+    sel_all = get_sel_entries(self)
+    for sel1 in sel_all:
+        data = struct.pack('<HBLH', sel1[0], sel1[1], sel1[2], sel1[3])
+        data += bytes(sel1[4:])
+        fout.write(data)
+
+    fout.close()
+    self.print('All SEL entries have been written in {0}.'.format(argv[1]))
+
+def _sel_readraw(self, argv):
+    # process arguments
+    if len(argv) < 2:
+        raise PyCmdsArgsExcept(1)
+
+    if len(argv) >= 3:
+        view = argv[2]
+        if view not in ('list', 'elist', 'vlist'):
+            raise PyCmdsArgsExcept(3, 0, view)
+    else:
+        view = 'list'
+
+    if view in ('elist', 'vlist'):
+        sensor_map = get_sensor_map(self)
+    else:
+        sensor_map = None
+
+    # read SEL entries
+    fin = open(argv[1], 'rb')
+    data = fin.read(16)
+    sel_all = []
+    while data:
+        sel1 = struct.unpack('<HBLHBBBBBBB', data)
+        sel_all.append(sel1)
+        data = fin.read(16)
+
+    fin.close()
+
+    # print SEL entries
+    opt, print_hdl = SEL_PRINT_HDL[view]
+    print_hdl(self, sel_all, opt, sensor_map)    
+
 def help_sel(self, argv=None, context=0):
     self.print('SEL Commands:')
     self.print('    list | elist | vlist')
@@ -200,6 +252,8 @@ def help_sel(self, argv=None, context=0):
     self.print('    clear')
     self.print('    time')
     self.print('    info')
+    self.print('    writeraw <output file>')
+    self.print('    readraw <input file> [list | elist | vlist]')
     self.print('    help')
 
 SEL_CMDS = {
@@ -210,6 +264,8 @@ SEL_CMDS = {
     'get': _sel_get,
     'clear': _sel_clear,
     'time': _sel_time,
+    'writeraw': _sel_writeraw,
+    'readraw': _sel_readraw,
     'help': help_sel,    
 }
 

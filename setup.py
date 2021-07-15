@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Hyve Design Solutions Corporation.
+# Copyright (c) 2020-2021, Hyve Design Solutions Corporation.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,7 @@ with open('requirements.txt', 'r') as fh:
 
 setuptools.setup(
     name='hyve-pyipmi',
-    version='1.2.2',
+    version='1.2.3',
     keywords=['ipmi', 'rmcp', 'rmcpp', 'kcs', 'openipmi'],
     author='Janny Au',
     author_email='jannya@hyvedesignsolutions.com',
