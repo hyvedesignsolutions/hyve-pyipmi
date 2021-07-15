@@ -73,6 +73,7 @@ class PyTest:
 
             # create the interface object
             self.intf = intf.init(opts, ping_only, keep_alive)
+            self.opts = opts
 
         except BaseException as e:
             if raise_except:

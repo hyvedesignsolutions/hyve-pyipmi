@@ -42,6 +42,7 @@ from ._sel import do_sel
 from ._sensor import do_sensor
 from ._user import do_user
 from ._fru import do_fru
+from ._event import do_event
 
 __all__ = [
     'PyCmds',
@@ -57,6 +58,7 @@ PY_CMDS = {
     'user': do_user,
     'lan': do_lan,
     'fru': do_fru,
+    'event': do_event,
     'raw': do_raw,
 }
 

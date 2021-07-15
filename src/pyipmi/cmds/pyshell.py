@@ -53,6 +53,7 @@ class PyShell(cmd.Cmd, PyTest):
     from ._sensor import do_sensor, help_sensor
     from ._user import do_user, help_user
     from ._fru import do_fru, help_fru
+    from ._event import do_event, help_event
     from ._raw import do_raw, help_raw
 
     from ._common import print

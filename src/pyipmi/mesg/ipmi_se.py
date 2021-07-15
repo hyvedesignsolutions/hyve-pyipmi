@@ -36,6 +36,13 @@ from .. util.exception import PyMesgExcept
 
 NETFN_SE = 4
 
+class PlatformEvent(IPMI_Message):
+    def __init__(self, data):
+        super(PlatformEvent, self).__init__(NETFN_SE, 0x02, data)
+
+    def unpack(self, rsp):
+        return super(PlatformEvent, self).unpack(rsp)
+
 class GetSensorReading(IPMI_Message):
     def __init__(self, sensor_num):
         super(GetSensorReading, self).__init__(NETFN_SE, 0x2d)
