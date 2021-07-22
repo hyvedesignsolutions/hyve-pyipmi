@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Hyve Design Solutions Corporation.
+# Copyright (c) 2020-2021, Hyve Design Solutions Corporation.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -379,7 +379,8 @@ def load_sdr_repo(self):
         # Handle sensor map
         if rec_type in (1, 2, 3):
             sdr2 = sdr1[7:]
-            sensor_num = sdr2[2]    # Sensor number
+            sensor_lun = sdr2[1] & 3                         # Sensor owner LUN
+            sensor_num = (sensor_lun << 8) + sdr2[2]         # Sensor number
             sensor_name = _conv_sensor_name(rec_type, sdr2)  # Sensor name
 
             entity_str, entity_name, units, sensor_type = '', '', '', ''
@@ -492,14 +493,18 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
             try:
                 t1 = self.intf.issue_cmd(GetSensorReading, sensor_num)
             except:
-                continue
+                t1 = None
 
             # Sensor status
-            stat = (t1[1] & 0x7f) >> 5
-            stat_str = ('ns', 'na', 'ok', 'ns')[stat]
+            if t1:
+                stat = (t1[1] & 0x7f) >> 5
+                stat_str = ('ns', 'ns', 'ok', 'na')[stat]
+            else:
+                stat = -1
+                stat_str = 'ns'
 
             # Present threshold comparison status
-            if event_reading_type == 1 and stat_str == 'ok' and len(t1) > 2:
+            if event_reading_type == 1 and stat == 2 and len(t1) > 2:
                 stat_str = get_threshold_status(t1[2], opt)
 
             # Convert the sensor reading to human readable format
@@ -511,9 +516,11 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
                     reading_str = _conv_sensor_reading(t1, sdr_type, sdr1, False)
                 else:
                     reading, reading_str = _conv_sensor_reading(t1, sdr_type, sdr1, True, True)                    
-            elif stat & 2 == 0:
+            elif stat == -1:        # Get Sensor Reading error
+                reading_str = 'reading error'
+            elif stat & 2 == 0:     # 00b, 01b
                 reading_str = 'disabled'
-            else:
+            else:   # 11b
                 reading_str = 'not available'
 
             if opt in (1, 2):    # sdr list, sdr elist
@@ -524,8 +531,10 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
                 yield (sensor_num, sensor_name, reading_str, stat_str, entity_str)
                 continue
 
-            # The remaining is for opt == 3 or 4, i.e. sdr slist/vlist or sensor list/vlist        
-            if ext:  # In ext mode, overwrite the thresholds from SDR with the ones from command
+            # The remaining is for opt == 3 or 4, i.e. sdr slist/vlist or sensor list/vlist
+            show_ext = lambda: ext and event_reading_type == 1 and sdr_type == 1  
+            if show_ext():  
+                # In ext mode, overwrite the thresholds from SDR with the ones from command
                 try:
                     # Get Sensor Thresholds command
                     argv = self.intf.issue_cmd(GetSensorThres, sensor_num)
@@ -539,7 +548,8 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
                 continue
 
             # The remaining is all for opt == 4, i.e. sdr vlist or sensor vlist
-            if ext:  # In ext mode, overwrite the hysteresis from SDR with the ones from command
+            if show_ext():  
+                # In ext mode, overwrite the hysteresis from SDR with the ones from command
                 try:
                     # Get Sensor Hysteresis command
                     argv = self.intf.issue_cmd(GetSensorHys, sensor_num)
@@ -566,21 +576,29 @@ def get_sensor_readings(self, opt=1, filter_sdr=0, filter_sensor_type=0, ext=Fal
 
 def print_sensor_list1(self, reading_all):
     for sensor_num, sensor_name, reading, stat, _ in reading_all:
-        fmt = '{0:02X}h | {1:16} | {2:16} | {3}' 
+        if sensor_num & 0x300:
+            fmt = '{0:3X}h | {1:16} | {2:16} | {3}' 
+        else:
+            fmt = ' {0:02X}h | {1:16} | {2:16} | {3}' 
         self.print(fmt.format(sensor_num, sensor_name, reading, stat))
 
 def print_sensor_list2(self, reading_all):
     for num, name, reading, stat, entity in reading_all:
-        fmt = '{0:02X}h | {1:16} | {3:>5} | {2:3} | {4}' 
+        if num & 0x300:
+            fmt = '{0:3X}h | {1:16} | {3:>5} | {2:3} | {4}'
+        else:
+            fmt = ' {0:02X}h | {1:16} | {3:>5} | {2:3} | {4}'
         self.print(fmt.format(num, name, stat, entity, reading))
 
 def print_sensor_list3(self, reading_all):
     for (sensor_num, sensor_name, reading, unit, stat, 
          lnc, lc, lnr, unc, uc, unr) in reading_all:
-        if reading == 'not available':  reading = 'na'
-        if reading == 'disabled':  reading = 'ns'
+        if stat in ('na', 'ns'):  reading = 'na'
 
-        fmt = '{0:02X}h | {1:16} | {2:8} | {3:10} | {4}' 
+        if sensor_num & 0x300:
+            fmt = '{0:3X}h | {1:16} | {2:8} | {3:10} | {4}' 
+        else:
+            fmt = ' {0:02X}h | {1:16} | {2:8} | {3:10} | {4}' 
         fmt += ' | {7:7} | {6:7} | {5:7} | {8:7} | {9:7} | {10:7}'
 
         self.print(fmt.format(sensor_num, sensor_name, reading, unit, stat,

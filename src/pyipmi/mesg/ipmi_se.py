@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Hyve Design Solutions Corporation.
+# Copyright (c) 2020-2021, Hyve Design Solutions Corporation.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,8 @@ class PlatformEvent(IPMI_Message):
 class GetSensorReading(IPMI_Message):
     def __init__(self, sensor_num):
         super(GetSensorReading, self).__init__(NETFN_SE, 0x2d)
-        self.req_data = struct.pack('B', sensor_num)
+        self.req_data = struct.pack('B', sensor_num & 0xff)
+        self.lun = (sensor_num & 0x0300) >> 8
 
     def unpack(self, rsp):
         cc, ret = rsp[2:]        

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Hyve Design Solutions Corporation.
+# Copyright (c) 2020-2021, Hyve Design Solutions Corporation.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -113,8 +113,9 @@ def print_sel_list(self, sel_all, opt=1, sensor_map=None):
         if rec_type >= 0xe0:  ts = '(OEM Non-Timestamped)'
         else:  ts = conv_time(sel1[2])
 
+        sensor_lun = (sel1[3] >> 8) & 3
         sensor_type = sel1[5]
-        sensor_num = sel1[6]
+        sensor_num = (sensor_lun << 8) + sel1[6]
         event_dir = 'Deassertion' if (sel1[7] & 0x80) >> 7 else 'Assertion'
         event_type = sel1[7] & 0x7f
         event = sel1[8] & 0x0f
