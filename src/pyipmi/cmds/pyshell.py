@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Hyve Design Solutions Corporation.
+# Copyright (c) 2020-2021, Hyve Design Solutions Corporation.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -151,8 +151,6 @@ class PyShell(cmd.Cmd, PyTest):
             words = ('clear-cmos', )
             if arg_1st == 'bootdev':
                 return self.match_words(text, words)
-            else:  
-                return None
         
         return None
 
@@ -183,15 +181,11 @@ class PyShell(cmd.Cmd, PyTest):
             elif arg_prev in ('getsysinfo', 'setsysinfo'):
                 words = ('system_fw_version', 'system_name', 'primary_os_name', 'os_name',)
                 return self.match_words(text, words)
-            else:
-                return None
 
         if pos == 3:
             if arg_1st == 'setenables':
                 words = ('on', 'off')
                 return self.match_words(text, words)
-            else:
-                return None
 
         return None
 
@@ -200,24 +194,28 @@ class PyShell(cmd.Cmd, PyTest):
         words_list = ['list', 'elist', 'slist', 'vlist',]
 
         if pos == 1:
-            words = words_list + ['info', 'help']
+            words = words_list + ['info', 'help', 'get', 'dump', 'fill']
             return self.match_words(text, words)
 
         if pos == 2:
             if arg_prev in words_list:
                 words = ('all', 'full', 'compact', 'event', 'fru', 'mcloc', 'type',)
                 return self.match_words(text, words)
-            else:
-                return None
 
         return None
 
     def complete_sel(self, text, line, begidx, endidx):
-        pos, *_ = self.get_pos(text, line, begidx, endidx)
+        pos, _, arg_1st = self.get_pos(text, line, begidx, endidx)
+        words_list = ['list', 'elist', 'vlist',]
 
         if pos == 1:
-            words = ('info', 'list', 'elist', 'vlist', 'clear', 'time', 'help',)
+            words = words_list + ['info', 'clear', 'time', 'help',
+                                  'get', 'writeraw', 'readraw',]
             return self.match_words(text, words)
+
+        if pos == 3:
+            if arg_1st == 'readraw':
+                return self.match_words(text, words_list)
 
         return None
     
@@ -226,15 +224,13 @@ class PyShell(cmd.Cmd, PyTest):
         words_list = ['list', 'vlist',]
 
         if pos == 1:
-            words = words_list + ['help',]
+            words = words_list + ['help', 'get']
             return self.match_words(text, words)
 
         if pos == 2:
             if arg_prev in words_list:
                 words = ('type',)
                 return self.match_words(text, words)
-            else:
-                return None
 
         return None
 
@@ -249,8 +245,6 @@ class PyShell(cmd.Cmd, PyTest):
             if arg_prev == 'set':
                 words = ('name', 'password', 'priv',)
                 return self.match_words(text, words)
-            else:
-                return None
 
         return None
 
@@ -264,17 +258,18 @@ class PyShell(cmd.Cmd, PyTest):
             words = ('auth', 'cipher',)
             if arg_prev in ('enable', 'disable'):
                 return self.match_words(text, words)
-            else:
-                return None
 
         return None
 
     def complete_fru(self, text, line, begidx, endidx):
-        pos, *_ = self.get_pos(text, line, begidx, endidx)
+        pos, _, arg_1st = self.get_pos(text, line, begidx, endidx)
 
         if pos == 1:
-            words = ('print', 'read', 'write',)
+            words = ('print', 'read', 'write', 'edit',)
             return self.match_words(text, words)
 
-        return None
+        if pos == 3:
+            if arg_1st == 'edit':
+                return self.match_words(text, ('field',))
 
+        return None
